@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "robo-baixa-videos-telegram"
+version = "0.1.0"
+description = ""
+authors = ["the_jota <jeremiassantana50@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+telethon = "^1.45.0"
+dotenv = "^0.9.9"
+functions = "^0.7.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
