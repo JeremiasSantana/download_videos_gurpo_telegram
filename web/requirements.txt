@@ -1,0 +1,9 @@
+# Dependências só da versão web (o núcleo usa o pyproject.toml).
+# No ambiente Poetry do projeto, prefira:
+#   poetry add fastapi "uvicorn[standard]"
+# Fora do Poetry:
+#   pip install -r web/requirements.txt
+fastapi>=0.115
+uvicorn[standard]>=0.30
+telethon>=1.45
+python-dotenv>=1.0
