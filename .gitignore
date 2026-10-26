@@ -22,3 +22,10 @@ __pycache__/
 *.part
 .baixados.json
 .baixados.json.tmp
+
+# Logs da aplicação
+logs/
+
+# Vídeos baixados para dentro do projeto (o padrão é fora dele)
+Vídeos/
+Videos/
