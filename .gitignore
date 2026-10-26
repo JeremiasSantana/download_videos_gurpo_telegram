@@ -1,4 +1,24 @@
+# Segredos e sessão — NUNCA subir para o Git
 .env
-.vscode/
+.env.*
+!.env.example
+*.session
+*.session-journal
+captura_videos-sessão.session
+
+# Ambiente e caches do Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
 .mypy_cache/
-sessao-telegram.session
+.pytest_cache/
+
+# Editores
+.vscode/
+.idea/
+
+# Downloads em andamento / registro local
+*.part
+.baixados.json
+.baixados.json.tmp
