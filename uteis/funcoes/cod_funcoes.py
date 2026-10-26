@@ -1,10 +1,40 @@
+"""
+Robô que baixa os vídeos de um grupo do Telegram, organizados por tópico.
+
+Melhorias desta versão:
+- Não baixa de novo o que já foi baixado: antes de baixar, confere o arquivo
+  no disco (existência + tamanho) e um registro de progresso salvo em disco.
+- Download é feito primeiro para um arquivo temporário ".part" e só vira o
+  arquivo final depois de concluir e conferir o tamanho. Se o processo for
+  interrompido no meio, nenhum vídeo fica "meio baixado" marcado como pronto.
+- Ctrl+C (ou outro cancelamento) encerra de forma limpa, sem traceback:
+  o parcial é apagado, o progresso é salvo e, ao rodar de novo, o robô
+  continua de onde parou.
+- Um vídeo que falha não derruba o robô: ele tenta de novo algumas vezes
+  (respeitando o FloodWait do Telegram) e, se mesmo assim falhar, registra
+  o erro e segue para o próximo vídeo.
+- ID_API é convertido para número (o Telethon exige int) e todas as
+  configurações podem vir do .env, sem precisar mexer no código.
+
+SEGURANÇA:
+- ID_API e API_HASH ficam SOMENTE no arquivo .env (nunca no código e
+  nunca no Git — o .env está no .gitignore).
+- O arquivo de sessão (*.session) funciona como uma senha da sua conta:
+  nunca compartilhe esse arquivo nem suba ele para o GitHub.
+  Ele também está coberto pelo .gitignore ("*.session").
+"""
+
 import asyncio
+import json
 import mimetypes
 import os
 import pathlib
+import sys
 
 from dotenv import load_dotenv
 from telethon import TelegramClient, functions
+from telethon.errors import FloodWaitError
+
 
 # =========================
 # CONFIGURAÇÕES
@@ -12,30 +42,159 @@ from telethon import TelegramClient, functions
 
 load_dotenv()
 
-id_api = os.getenv("ID_API")
-api_hash = os.getenv("API_HASH")
 
-if not id_api or not api_hash:
-    raise ValueError(
-        "Configure ID_API e API_HASH no arquivo .env."
-    )
+def _ler_id_api():
+    """Lê e valida o ID_API do .env, convertendo para int."""
+    bruto = (os.getenv("ID_API") or "").strip()
 
-# id_api = int(id_api)
+    if not bruto:
+        raise ValueError("Configure ID_API no arquivo .env.")
 
-nome_grupo = "SuperTopicos 25 em 1 - VIP 🍓"
+    try:
+        return int(bruto)
+    except ValueError:
+        raise ValueError(
+            "ID_API precisa ser um número inteiro. "
+            "Confira o valor no arquivo .env."
+        ) from None
 
-caminho_base = pathlib.Path("/home/jeremias/Vídeos")
+
+def _ler_limite():
+    """Lê o limite opcional de mensagens do .env (vazio = sem limite)."""
+    bruto = (os.getenv("LIMITE_MENSAGENS") or "").strip()
+
+    if not bruto:
+        return None
+
+    try:
+        valor = int(bruto)
+    except ValueError:
+        raise ValueError(
+            "LIMITE_MENSAGENS precisa ser um número inteiro "
+            "(ou ficar vazio para baixar todo o histórico)."
+        ) from None
+
+    return valor if valor > 0 else None
+
+
+ID_API = _ler_id_api()
+
+API_HASH = (os.getenv("API_HASH") or "").strip()
+
+if not API_HASH:
+    raise ValueError("Configure API_HASH no arquivo .env.")
+
+# Nome visível do grupo. Pode ser trocado no .env (NOME_GRUPO), sem mexer aqui.
+NOME_GRUPO = os.getenv("NOME_GRUPO", "SuperTopicos 25 em 1 - VIP 🍓")
+
+# Pasta onde os vídeos são salvos. Padrão: ~/Vídeos. Pode ser trocada
+# no .env (PASTA_VIDEOS), sem depender de um caminho fixo de uma máquina.
+CAMINHO_BASE = pathlib.Path(
+    os.getenv("PASTA_VIDEOS", str(pathlib.Path.home() / "Vídeos"))
+).expanduser()
 
 # None significa percorrer todo o histórico acessível.
-limite = None
+LIMITE = _ler_limite()
+
+# Nome da sessão do Telethon (gera o arquivo "<nome>.session" na pasta
+# onde o script é executado). Nome simples, sem acentos, para evitar
+# problemas de codificação — e coberto pelo .gitignore.
+NOME_SESSAO = os.getenv("NOME_SESSAO", "captura_videos")
+
+# Quantas vezes tentar baixar o mesmo vídeo antes de desistir dele
+# (o robô continua nos próximos vídeos mesmo se um falhar).
+MAX_TENTATIVAS = 3
+
+# Registro de progresso: fica junto dos vídeos (fora do repositório),
+# mapeando o ID da mensagem para o arquivo baixado e o seu tamanho.
+ARQUIVO_ESTADO = CAMINHO_BASE / ".baixados.json"
 
 
 # =========================
-# TRATAMENTO DO NOME DA PASTA
+# REGISTRO DE PROGRESSO
 # =========================
 
-def limpar_nome_pasta(nome):
 
+def carregar_estado():
+    """Carrega o registro de vídeos já baixados."""
+    if not ARQUIVO_ESTADO.exists():
+        return {}
+
+    try:
+        dados = json.loads(ARQUIVO_ESTADO.read_text(encoding="utf-8"))
+        return dados if isinstance(dados, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        print(
+            "[AVISO] Não consegui ler o registro de progresso "
+            f"({ARQUIVO_ESTADO}). Vou reconstruir pelo que já "
+            "existe no disco."
+        )
+        return {}
+
+
+def salvar_estado(estado):
+    """Salva o registro de forma atômica (escreve e substitui)."""
+    try:
+        CAMINHO_BASE.mkdir(parents=True, exist_ok=True)
+        temporario = ARQUIVO_ESTADO.with_suffix(".json.tmp")
+        temporario.write_text(
+            json.dumps(estado, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        os.replace(temporario, ARQUIVO_ESTADO)
+    except OSError as erro:
+        print(f"[AVISO] Não consegui salvar o progresso: {erro}")
+
+
+def arquivo_completo(caminho, tamanho_esperado=None):
+    """Confere se o arquivo existe e parece completo."""
+    try:
+        if not caminho.exists() or not caminho.is_file():
+            return False
+
+        tamanho = caminho.stat().st_size
+
+        if tamanho <= 0:
+            return False
+
+        if tamanho_esperado is not None and tamanho != tamanho_esperado:
+            return False
+
+        return True
+    except OSError:
+        return False
+
+
+def ja_foi_baixado(estado, id_mensagem, destino, tamanho_esperado):
+    """
+    Decide se o vídeo já foi baixado, por duas vias:
+    1. O arquivo final existe no destino com o tamanho esperado;
+    2. O registro de progresso aponta para um arquivo completo.
+    """
+    if arquivo_completo(destino, tamanho_esperado):
+        return True
+
+    registro = estado.get(str(id_mensagem))
+
+    if isinstance(registro, dict):
+        caminho_registrado = registro.get("arquivo")
+        tamanho_registrado = registro.get("tamanho")
+
+        if caminho_registrado and arquivo_completo(
+            pathlib.Path(caminho_registrado), tamanho_registrado
+        ):
+            return True
+
+    return False
+
+
+# =========================
+# TRATAMENTO DE NOMES
+# =========================
+
+
+def limpar_nome(nome):
+    """Remove caracteres inválidos para nome de pasta/arquivo."""
     caracteres_invalidos = '<>:"/\\|?*'
 
     for caractere in caracteres_invalidos:
@@ -48,13 +207,12 @@ def limpar_nome_pasta(nome):
 # LOCALIZAR O GRUPO
 # =========================
 
+
 async def localizar_grupo(client, nome_grupo):
     """Localiza um grupo pelo nome visível nos diálogos."""
-
     nome_procurado = nome_grupo.strip().casefold()
 
     async for dialogo in client.iter_dialogs():
-
         if (dialogo.name or "").strip().casefold() == nome_procurado:
             return dialogo.entity
 
@@ -68,17 +226,15 @@ async def localizar_grupo(client, nome_grupo):
 # BUSCAR OS TÓPICOS
 # =========================
 
+
 async def buscar_topicos(client, entidade):
     """Obtém os IDs e os nomes dos tópicos do fórum."""
-
     topicos = {}
-
     offset_date = 0
     offset_id = 0
     offset_topic = 0
 
     while True:
-
         resposta = await client(
             functions.messages.GetForumTopicsRequest(
                 peer=entidade,
@@ -86,7 +242,7 @@ async def buscar_topicos(client, entidade):
                 offset_date=offset_date,
                 offset_id=offset_id,
                 offset_topic=offset_topic,
-                limit=100
+                limit=100,
             )
         )
 
@@ -113,7 +269,7 @@ async def buscar_topicos(client, entidade):
                 for mensagem in resposta.messages
                 if mensagem.id == ultimo_topico.top_message
             ),
-            None
+            None,
         )
 
         if mensagem_referencia is None:
@@ -125,14 +281,10 @@ async def buscar_topicos(client, entidade):
         novos_offsets = (
             int(mensagem_referencia.date.timestamp()),
             ultimo_topico.top_message,
-            ultimo_topico.id
+            ultimo_topico.id,
         )
 
-        offsets_atuais = (
-            offset_date,
-            offset_id,
-            offset_topic
-        )
+        offsets_atuais = (offset_date, offset_id, offset_topic)
 
         # Evita repetir indefinidamente a mesma página.
         if novos_offsets == offsets_atuais:
@@ -150,9 +302,9 @@ async def buscar_topicos(client, entidade):
 # IDENTIFICAR O TÓPICO
 # =========================
 
+
 def identificar_topico(mensagem, topicos):
     """Identifica o tópico associado à mensagem."""
-
     # A própria mensagem pode ser a mensagem inicial do tópico.
     if mensagem.id in topicos:
         return topicos[mensagem.id]
@@ -160,21 +312,13 @@ def identificar_topico(mensagem, topicos):
     cabecalho_resposta = mensagem.reply_to
 
     if cabecalho_resposta:
-
         # Obtém o ID da mensagem que iniciou a conversa.
-        id_topico = getattr(
-            cabecalho_resposta,
-            "reply_to_top_id",
-            None
-        )
+        id_topico = getattr(cabecalho_resposta, "reply_to_top_id", None)
 
         # Alternativa para respostas diretas à mensagem inicial.
         if id_topico is None:
-
             id_resposta = getattr(
-                cabecalho_resposta,
-                "reply_to_msg_id",
-                None
+                cabecalho_resposta, "reply_to_msg_id", None
             )
 
             if id_resposta in topicos:
@@ -191,9 +335,9 @@ def identificar_topico(mensagem, topicos):
 # VERIFICAR SE É UM VÍDEO
 # =========================
 
+
 def mensagem_e_video(mensagem):
     """Verifica se a mensagem contém um vídeo."""
-
     if mensagem.video:
         return True
 
@@ -208,12 +352,132 @@ def mensagem_e_video(mensagem):
     )
 
 
+def nome_destino(mensagem, pasta):
+    """Monta o caminho final do vídeo (pasta + nome do arquivo)."""
+    # Obtém o nome original do arquivo, quando disponível.
+    if mensagem.file and mensagem.file.name:
+        nome_arquivo = pathlib.Path(mensagem.file.name).name
+    else:
+        # Tenta determinar a extensão pelo tipo MIME.
+        tipo_mime = mensagem.file.mime_type if mensagem.file else None
+        extensao = (
+            mimetypes.guess_extension(tipo_mime) if tipo_mime else None
+        )
+
+        if not extensao:
+            extensao = ".mp4"
+
+        nome_arquivo = f"video_{mensagem.id}{extensao}"
+
+    nome_arquivo = limpar_nome(nome_arquivo)
+
+    # Adiciona o ID da mensagem ao nome do arquivo.
+    return pasta / f"{mensagem.id}_{nome_arquivo}"
+
+
+def tamanho_esperado(mensagem):
+    """Tamanho em bytes que o vídeo deve ter, quando o Telegram informa."""
+    arquivo = mensagem.file
+
+    if arquivo is not None:
+        tamanho = getattr(arquivo, "size", None)
+
+        if isinstance(tamanho, int) and tamanho > 0:
+            return tamanho
+
+    return None
+
+
+# =========================
+# BAIXAR UM VÍDEO
+# =========================
+
+
+async def baixar_um_video(mensagem, destino, esperado):
+    """
+    Baixa um vídeo para um arquivo temporário ".part" e, somente após
+    concluir e conferir o tamanho, renomeia para o destino final.
+
+    Levanta a exceção em caso de falha (quem chama decide tentar de
+    novo ou passar para o próximo). Em caso de cancelamento, apaga o
+    parcial antes de propagar, para nada ficar marcado como pronto.
+    """
+    parcial = destino.with_name(destino.name + ".part")
+
+    try:
+        caminho = await mensagem.download_media(file=str(parcial))
+    except asyncio.CancelledError:
+        parcial.unlink(missing_ok=True)
+        raise
+
+    if not caminho or not parcial.exists():
+        parcial.unlink(missing_ok=True)
+        raise RuntimeError("O download não gerou arquivo.")
+
+    if esperado is not None and parcial.stat().st_size != esperado:
+        tamanho_baixado = parcial.stat().st_size
+        parcial.unlink(missing_ok=True)
+        raise RuntimeError(
+            f"Tamanho divergente: esperado {esperado} bytes, "
+            f"baixado {tamanho_baixado} bytes."
+        )
+
+    # Download conferido: agora sim vira o arquivo final.
+    os.replace(parcial, destino)
+    return destino
+
+
+async def baixar_com_tentativas(mensagem, destino, esperado):
+    """
+    Tenta baixar um vídeo até MAX_TENTATIVAS vezes.
+
+    - FloodWait (limite do Telegram): espera o tempo pedido e tenta de
+      novo, sem gastar as tentativas.
+    - Outros erros: espera um pouco (backoff) e tenta de novo.
+    Retorna True se baixou, False se desistiu desse vídeo.
+    """
+    tentativas = 0
+
+    while tentativas < MAX_TENTATIVAS:
+        try:
+            await baixar_um_video(mensagem, destino, esperado)
+            return True
+        except FloodWaitError as erro:
+            espera = int(getattr(erro, "seconds", 0)) + 1
+            print(
+                f"[AGUARDANDO] Telegram pediu pausa de {espera}s "
+                f"(mensagem {mensagem.id})."
+            )
+            await asyncio.sleep(espera)
+        except asyncio.CancelledError:
+            raise
+        except Exception as erro:  # noqa: BLE001 - um vídeo não pode parar os demais
+            tentativas += 1
+
+            if tentativas < MAX_TENTATIVAS:
+                espera = 2**tentativas
+                print(
+                    f"[RETRY] Mensagem {mensagem.id}: {erro} "
+                    f"Tentativa {tentativas + 1}/{MAX_TENTATIVAS} "
+                    f"em {espera}s."
+                )
+                await asyncio.sleep(espera)
+            else:
+                print(
+                    f"[ERRO] Mensagem {mensagem.id}: desisti após "
+                    f"{MAX_TENTATIVAS} tentativas. Último erro: {erro}"
+                )
+
+    return False
+
+
 # =========================
 # BAIXAR OS VÍDEOS
 # =========================
 
-async def baixar_videos(client, grupo, limite):
 
+async def baixar_videos(client, grupo, limite, estado):
+    """Percorre o grupo e baixa os vídeos que ainda faltam."""
     # Localiza o grupo pelo nome visível.
     entidade = await localizar_grupo(client, grupo)
 
@@ -222,105 +486,95 @@ async def baixar_videos(client, grupo, limite):
 
     print(f"Tópicos encontrados: {len(topicos)}")
 
-    total = 0
+    baixados = 0
+    pulados = 0
+    erros = 0
 
-    # None mantém a leitura de todo o histórico acessível.
-    async for mensagem in client.iter_messages(
-        entidade,
-        limit=limite
-    ):
+    try:
+        # None mantém a leitura de todo o histórico acessível.
+        async for mensagem in client.iter_messages(entidade, limit=limite):
+            # Ignora mensagens que não contêm vídeos.
+            if not mensagem_e_video(mensagem):
+                continue
 
-        # Ignora mensagens que não contêm vídeos.
-        if not mensagem_e_video(mensagem):
-            continue
+            # Identifica a pasta correspondente ao tópico.
+            nome_topico = identificar_topico(mensagem, topicos)
 
-        # Identifica a pasta correspondente ao tópico.
-        nome_topico = identificar_topico(
-            mensagem,
-            topicos
-        )
+            pasta = CAMINHO_BASE / limpar_nome(nome_topico)
+            pasta.mkdir(parents=True, exist_ok=True)
 
-        # Cria a pasta do tópico.
-        pasta = (
-            caminho_base
-            / limpar_nome_pasta(nome_topico)
-        )
+            destino = nome_destino(mensagem, pasta)
+            esperado = tamanho_esperado(mensagem)
 
-        pasta.mkdir(
-            parents=True,
-            exist_ok=True
-        )
+            # >>> A verificação que faltava: já baixou? Então pula. <<<
+            if ja_foi_baixado(estado, mensagem.id, destino, esperado):
+                pulados += 1
 
-        # Obtém o nome original do arquivo, quando disponível.
-        if mensagem.file and mensagem.file.name:
+                # Garante o registro, para as próximas execuções
+                # nem precisarem conferir arquivo por arquivo.
+                if str(mensagem.id) not in estado and destino.exists():
+                    estado[str(mensagem.id)] = {
+                        "arquivo": str(destino),
+                        "tamanho": destino.stat().st_size,
+                        "topico": nome_topico,
+                    }
+                    salvar_estado(estado)
 
-            nome_arquivo = pathlib.Path(
-                mensagem.file.name
-            ).name
+                continue
 
-        else:
-            # Tenta determinar a extensão pelo tipo MIME.
-            tipo_mime = (
-                mensagem.file.mime_type
-                if mensagem.file
-                else None
+            sucesso = await baixar_com_tentativas(
+                mensagem, destino, esperado
             )
 
-            extensao = (
-                mimetypes.guess_extension(tipo_mime)
-                if tipo_mime
-                else None
-            )
+            if sucesso:
+                baixados += 1
+                estado[str(mensagem.id)] = {
+                    "arquivo": str(destino),
+                    "tamanho": destino.stat().st_size,
+                    "topico": nome_topico,
+                }
+                salvar_estado(estado)
+                print(f"[OK] {nome_topico}: {destino}")
+            else:
+                erros += 1
+    except asyncio.CancelledError:
+        # Ctrl+C no meio do caminho: o progresso já foi salvo a cada
+        # vídeo; aqui só garantimos uma última gravação antes de sair.
+        salvar_estado(estado)
+        raise
 
-            if not extensao:
-                extensao = ".mp4"
+    print("\nDownload concluído!")
+    print(f"Baixados agora: {baixados}")
+    print(f"Pulados (já existiam): {pulados}")
+    print(f"Com erro: {erros}")
 
-            nome_arquivo = (
-                f"video_{mensagem.id}{extensao}"
-            )
-
-        # Adiciona o ID da mensagem ao nome do arquivo.
-        destino = pasta / (
-            f"{mensagem.id}_{nome_arquivo}"
-        )
-
-        # Baixa o vídeo para o destino definido.
-        caminho = await mensagem.download_media(
-            file=str(destino)
-        )
-
-        if caminho:
-
-            total += 1
-
-            print(
-                f"[OK] {nome_topico}: {caminho}"
-            )
-
-    print(
-        f"\nDownload concluído! "
-        f"Total de vídeos: {total}"
-    )
+    return {"baixados": baixados, "pulados": pulados, "erros": erros}
 
 
 # =========================
 # EXECUÇÃO PRINCIPAL
 # =========================
 
+
 async def main():
+    CAMINHO_BASE.mkdir(parents=True, exist_ok=True)
+    estado = carregar_estado()
 
-    async with TelegramClient(
-        session="captura_videos-sessão",
-        api_id=id_api,
-        api_hash=api_hash
-    ) as client:
-
-        await baixar_videos(
-            client,
-            nome_grupo,
-            limite=limite
-        )
+    async with TelegramClient(NOME_SESSAO, ID_API, API_HASH) as client:
+        await baixar_videos(client, NOME_GRUPO, LIMITE, estado)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        # Isso acontece quando você aperta Ctrl+C: não é um erro do
+        # código. O parcial é apagado e o progresso fica salvo, então
+        # é só rodar de novo que ele continua de onde parou,
+        # sem baixar tudo outra vez.
+        print(
+            "\nInterrompido por você (Ctrl+C). "
+            "O que já foi baixado está salvo."
+        )
+        print("Rode de novo para continuar de onde parou.")
+        sys.exit(130)
