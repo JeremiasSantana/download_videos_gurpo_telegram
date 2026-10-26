@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "robo-baixa-videos-telegram"
-version = "0.2.0"
+version = "0.3.0"
 description = "Baixa os vídeos de um grupo do Telegram, organizados por tópico, sem baixar de novo o que já foi baixado."
 authors = ["the_jota <jeremiassantana50@gmail.com>"]
 readme = "README.md"
@@ -10,6 +10,12 @@ package-mode = false
 python = "^3.12"
 telethon = "^1.45.0"
 python-dotenv = "^1.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.1.1"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [build-system]
 requires = ["poetry-core"]
