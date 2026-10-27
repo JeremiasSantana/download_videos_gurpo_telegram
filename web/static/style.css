@@ -3,15 +3,15 @@
 [data-tema="escuro"] {
   color-scheme: dark;
   --grad-1: #000000;
-  --grad-2: #0a0a0c;
-  --grad-3: #1c1c22;
-  --painel: rgba(16, 16, 20, 0.88);
-  --painel-borda: rgba(255, 255, 255, 0.16);
+  --grad-2: #030304;
+  --grad-3: #0a0a0d;
+  --painel: rgba(8, 8, 10, 0.92);
+  --painel-borda: rgba(255, 255, 255, 0.12);
   --texto: #f2f2f5;
   --texto-fraco: #a7a7b3;
   --destaque: #2aabee;
-  --botao: #26262e;
-  --campo: rgba(5, 5, 8, 0.92);
+  --botao: #16161a;
+  --campo: rgba(0, 0, 0, 0.95);
   --rede: 120, 190, 250;
   --erro: #ff8a80;
 }
