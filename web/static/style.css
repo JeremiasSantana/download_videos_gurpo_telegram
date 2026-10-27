@@ -2,17 +2,17 @@
    A troca é pelo atributo data-tema no <html>, salva no navegador. */
 [data-tema="escuro"] {
   color-scheme: dark;
-  --grad-1: #0b1220;
-  --grad-2: #132238;
-  --grad-3: #1d1340;
-  --painel: rgba(23, 33, 48, 0.88);
-  --painel-borda: rgba(120, 170, 230, 0.25);
-  --texto: #e8eef4;
-  --texto-fraco: #9db4cc;
+  --grad-1: #000000;
+  --grad-2: #0a0a0c;
+  --grad-3: #1c1c22;
+  --painel: rgba(16, 16, 20, 0.88);
+  --painel-borda: rgba(255, 255, 255, 0.16);
+  --texto: #f2f2f5;
+  --texto-fraco: #a7a7b3;
   --destaque: #2aabee;
-  --botao: #33506e;
-  --campo: rgba(10, 18, 30, 0.9);
-  --rede: 90, 180, 250;
+  --botao: #26262e;
+  --campo: rgba(5, 5, 8, 0.92);
+  --rede: 120, 190, 250;
   --erro: #ff8a80;
 }
 [data-tema="claro"] {
