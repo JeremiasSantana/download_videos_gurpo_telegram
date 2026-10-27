@@ -48,7 +48,8 @@
   <section id="secao-download">
     <h2>2. Escolher o que baixar</h2>
     <label>Destino (título, @usuário, link ou ID)
-      <input id="destino" type="text" placeholder="Ex.: Meu grupo">
+      <input id="destino" type="text" placeholder="Ex.: Meu grupo" list="sugestoes-destinos" autocomplete="off">
+      <datalist id="sugestoes-destinos"></datalist>
     </label>
     <div class="linha">
       <button id="btn-listar">Listar meus destinos</button>

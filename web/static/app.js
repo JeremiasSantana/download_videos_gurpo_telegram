@@ -168,16 +168,25 @@ moverLogos();
 
 // ---------- Status / login ----------
 function preencherDestinos(destinos) {
+  // NUNCA sobrescrever o que o usuário digitou no campo: só preenche
+  // a lista de opções e as sugestões de digitação (datalist).
   const select = $("lista-destinos");
   select.innerHTML = "";
+  const sugestoes = $("sugestoes-destinos");
+  if (sugestoes) sugestoes.innerHTML = "";
   for (const d of destinos) {
     const opt = document.createElement("option");
     opt.value = String(d.id);
     opt.textContent = `${d.titulo} (${d.tipo})`;
     select.appendChild(opt);
+    if (sugestoes) {
+      const sug = document.createElement("option");
+      sug.value = d.titulo;
+      sug.label = `${d.tipo} — ID ${d.id}`;
+      sugestoes.appendChild(sug);
+    }
   }
   select.hidden = destinos.length === 0;
-  if (destinos.length) $("destino").value = String(destinos[0].id);
 }
 
 async function atualizarStatus() {
@@ -227,35 +236,90 @@ $("btn-confirmar").addEventListener("click", async () => {
 });
 
 // ---------- Destino / tópicos ----------
+// Estado da verificação: guarda para QUAL texto o destino/tópicos em
+// tela foram verificados. Se o texto mudar, a verificação antiga é
+// descartada — nada de resultado velho de outro grupo.
+let entradaVerificada = null;
+let sequenciaVerificacao = 0;
+
+function limparTopicos() {
+  $("topico").innerHTML = '<option value="">Todos / sem tópico</option>';
+}
+
+function invalidarVerificacao() {
+  entradaVerificada = null;
+  sequenciaVerificacao++;
+  $("info-destino").textContent = "";
+  limparTopicos();
+}
+
+$("destino").addEventListener("input", () => {
+  if (entradaVerificada !== null &&
+      $("destino").value.trim() !== entradaVerificada) {
+    invalidarVerificacao();
+  }
+});
+
 $("btn-listar").addEventListener("click", async () => {
   mostrarErro("");
+  const botao = $("btn-listar");
+  botao.disabled = true;
   try {
     preencherDestinos(await chamar("/api/destinos"));
   } catch (e) { mostrarErro(e.message); }
+  botao.disabled = false;
 });
 
 $("lista-destinos").addEventListener("change", () => {
   $("destino").value = $("lista-destinos").value;
+  invalidarVerificacao();
 });
 
-$("btn-preparar").addEventListener("click", async () => {
-  mostrarErro("");
+async function verificarDestino() {
+  const entrada = $("destino").value.trim();
+  if (!entrada) {
+    $("info-destino").textContent =
+      "Digite o nome ou o ID do destino primeiro.";
+    return false;
+  }
+  const minhaSequencia = ++sequenciaVerificacao;
+  const botao = $("btn-preparar");
+  botao.disabled = true;
+  entradaVerificada = null;
+  limparTopicos();
+  $("info-destino").textContent = "Verificando…";
   try {
-    const r = await chamar("/api/preparar", jsonPost({ entrada: $("destino").value }));
+    const r = await chamar(
+      "/api/preparar", jsonPost({ entrada })
+    );
+    if (minhaSequencia !== sequenciaVerificacao) return false; // velha
     $("info-destino").textContent =
       `Destino: ${r.destino.titulo} (${r.destino.tipo})`;
-    const select = $("topico");
-    select.innerHTML = '<option value="">Todos / sem tópico</option>';
     for (const t of r.topicos) {
       const opt = document.createElement("option");
       opt.value = String(t.id);
       opt.textContent = t.titulo;
-      select.appendChild(opt);
+      $("topico").appendChild(opt);
     }
     if (r.destino.tem_topicos) {
       $("info-destino").textContent += ` — ${r.topicos.length} tópicos.`;
     }
-  } catch (e) { mostrarErro(e.message); }
+    entradaVerificada = entrada;
+    return true;
+  } catch (e) {
+    if (minhaSequencia !== sequenciaVerificacao) return false; // velha
+    // O erro aparece aqui, junto do campo — não só no rodapé da página.
+    $("info-destino").textContent = e.message;
+    mostrarErro(e.message);
+    return false;
+  } finally {
+    if (minhaSequencia === sequenciaVerificacao) botao.disabled = false;
+  }
+}
+
+$("btn-preparar").addEventListener("click", async () => {
+  mostrarErro("");
+  await verificarDestino();
 });
 
 // ---------- Download / progresso ----------
@@ -290,10 +354,17 @@ function acompanhar() {
 $("btn-baixar").addEventListener("click", async () => {
   mostrarErro("");
   try {
+    // Se o texto atual ainda não foi verificado (ou mudou desde a
+    // última verificação), verifica agora — nunca baixar usando
+    // tópico/resultado de outro destino.
+    if (entradaVerificada !== $("destino").value.trim()) {
+      const ok = await verificarDestino();
+      if (!ok) return;
+    }
     const limite = $("limite").value ? parseInt($("limite").value, 10) : null;
     const topico = $("topico").value ? parseInt($("topico").value, 10) : null;
     await chamar("/api/baixar", jsonPost({
-      entrada: $("destino").value,
+      entrada: $("destino").value.trim(),
       topico_id: topico,
       limite: limite,
       pasta: $("pasta").value || null,
