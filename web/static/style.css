@@ -193,9 +193,10 @@ button:disabled { opacity: 0.5; cursor: wait; }
 .grupo .embacado { filter: blur(8px); user-select: none; pointer-events: none; }
 a { color: var(--destaque); }
 
-.caixa-destinos { margin-top: 8px; }
-
-#btn-destinos-seta { width: 100%; }
+.campo-com-seta { display: flex; gap: 8px; }
+.campo-com-seta input { flex: 1; }
+#btn-seta-destinos { min-width: 48px; font-size: 1.05rem; }
+.item-vazio { padding: 9px 10px; color: var(--texto-fraco); }
 
 .lista-destinos {
   margin-top: 6px; max-height: 260px; overflow-y: auto;

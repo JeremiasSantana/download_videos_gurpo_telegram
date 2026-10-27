@@ -15,7 +15,7 @@ async function chamar(url, opcoes) {
     if (detalhe && typeof detalhe === "object") {
       if (Array.isArray(detalhe.candidatos)) {
         preencherDestinos(detalhe.candidatos);
-        throw new Error(detalhe.mensagem + " Escolha um na lista abaixo do botão Listar.");
+        throw new Error(detalhe.mensagem + " Escolha um na lista que abriu.");
       }
       detalhe = detalhe.mensagem || JSON.stringify(detalhe);
     }
@@ -167,26 +167,34 @@ montarLogos();
 moverLogos();
 
 // ---------- Status / login ----------
+// Lista de conversas: painel próprio (não o <select> do navegador),
+// aberto pela seta ao lado do campo. Abre com um clique e só fecha
+// ao escolher um item ou ao clicar na seta de novo — nada de clicar
+// e segurar o mouse. A seta mostra as conversas que combinam com o
+// texto digitado; campo vazio mostra todas.
+let todosDestinos = null; // cache da lista completa de conversas
+
 function abrirListaDestinos() {
   $("lista-destinos").hidden = false;
-  $("seta-destinos").textContent = "▴";
+  $("btn-seta-destinos").textContent = "▴";
 }
 
 function fecharListaDestinos() {
   $("lista-destinos").hidden = true;
-  $("seta-destinos").textContent = "▾";
+  $("btn-seta-destinos").textContent = "▾";
 }
 
-function preencherDestinos(destinos) {
-  // NUNCA sobrescrever o que o usuário digitou no campo: só preenche
-  // a lista de opções e as sugestões de digitação (datalist).
-  // A lista é um painel próprio (não o <select> do navegador): abre
-  // com um clique e só fecha ao escolher um item ou ao clicar na
-  // seta de novo — nada de clicar e segurar o mouse.
+function montarListaDestinos(destinos) {
+  // Monta os itens do painel SEM mexer no texto digitado no campo.
   const lista = $("lista-destinos");
   lista.innerHTML = "";
-  const sugestoes = $("sugestoes-destinos");
-  if (sugestoes) sugestoes.innerHTML = "";
+  if (!destinos.length) {
+    const vazio = document.createElement("div");
+    vazio.className = "item-vazio";
+    vazio.textContent = "Nenhuma conversa encontrada.";
+    lista.appendChild(vazio);
+    return;
+  }
   for (const d of destinos) {
     const item = document.createElement("button");
     item.type = "button";
@@ -198,20 +206,44 @@ function preencherDestinos(destinos) {
       fecharListaDestinos();
     });
     lista.appendChild(item);
-    if (sugestoes) {
-      const sug = document.createElement("option");
-      sug.value = d.titulo;
-      sug.label = `${d.tipo} — ID ${d.id}`;
-      sugestoes.appendChild(sug);
-    }
   }
-  $("caixa-destinos").hidden = destinos.length === 0;
+}
+
+function preencherDestinos(destinos) {
+  // Usado para os candidatos de um nome duplicado: mostra e abre.
+  montarListaDestinos(destinos);
   if (destinos.length) abrirListaDestinos();
 }
 
-$("btn-destinos-seta").addEventListener("click", () => {
-  if ($("lista-destinos").hidden) abrirListaDestinos();
-  else fecharListaDestinos();
+function filtrarDestinos(destinos, texto) {
+  const t = texto.trim().toLowerCase();
+  if (!t) return destinos;
+  return destinos.filter((d) =>
+    d.titulo.toLowerCase().includes(t) ||
+    (d.username && d.username.toLowerCase().includes(t)) ||
+    String(d.id).includes(t)
+  );
+}
+
+async function mostrarDestinosDaSeta() {
+  if (!todosDestinos) {
+    todosDestinos = await chamar("/api/destinos");
+  }
+  montarListaDestinos(
+    filtrarDestinos(todosDestinos, $("destino").value)
+  );
+  abrirListaDestinos();
+}
+
+$("btn-seta-destinos").addEventListener("click", async () => {
+  mostrarErro("");
+  if (!$("lista-destinos").hidden) {
+    fecharListaDestinos();
+    return;
+  }
+  try {
+    await mostrarDestinosDaSeta();
+  } catch (e) { mostrarErro(e.message); }
 });
 
 async function atualizarStatus() {
@@ -289,16 +321,12 @@ $("destino").addEventListener("input", () => {
       $("destino").value.trim() !== entradaVerificada) {
     invalidarVerificacao();
   }
-});
-
-$("btn-listar").addEventListener("click", async () => {
-  mostrarErro("");
-  const botao = $("btn-listar");
-  botao.disabled = true;
-  try {
-    preencherDestinos(await chamar("/api/destinos"));
-  } catch (e) { mostrarErro(e.message); }
-  botao.disabled = false;
+  // Com o painel aberto, digitar já filtra as conversas na hora.
+  if (!$("lista-destinos").hidden && todosDestinos) {
+    montarListaDestinos(
+      filtrarDestinos(todosDestinos, $("destino").value)
+    );
+  }
 });
 
 async function verificarDestino() {
