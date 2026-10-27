@@ -192,3 +192,22 @@ button:disabled { opacity: 0.5; cursor: wait; }
 .grupo-videos li { margin: 6px 0; }
 .grupo .embacado { filter: blur(8px); user-select: none; pointer-events: none; }
 a { color: var(--destaque); }
+
+.caixa-destinos { margin-top: 8px; }
+
+#btn-destinos-seta { width: 100%; }
+
+.lista-destinos {
+  margin-top: 6px; max-height: 260px; overflow-y: auto;
+  background: var(--painel); border: 1px solid var(--borda);
+  border-radius: 12px; padding: 6px;
+}
+
+.item-destino {
+  display: block; width: 100%; text-align: left;
+  background: transparent; border: none; border-radius: 8px;
+  color: var(--texto); padding: 9px 10px; cursor: pointer;
+  font: inherit;
+}
+
+.item-destino:hover { background: rgba(128, 128, 128, .18); }

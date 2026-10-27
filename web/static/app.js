@@ -167,18 +167,37 @@ montarLogos();
 moverLogos();
 
 // ---------- Status / login ----------
+function abrirListaDestinos() {
+  $("lista-destinos").hidden = false;
+  $("seta-destinos").textContent = "▴";
+}
+
+function fecharListaDestinos() {
+  $("lista-destinos").hidden = true;
+  $("seta-destinos").textContent = "▾";
+}
+
 function preencherDestinos(destinos) {
   // NUNCA sobrescrever o que o usuário digitou no campo: só preenche
   // a lista de opções e as sugestões de digitação (datalist).
-  const select = $("lista-destinos");
-  select.innerHTML = "";
+  // A lista é um painel próprio (não o <select> do navegador): abre
+  // com um clique e só fecha ao escolher um item ou ao clicar na
+  // seta de novo — nada de clicar e segurar o mouse.
+  const lista = $("lista-destinos");
+  lista.innerHTML = "";
   const sugestoes = $("sugestoes-destinos");
   if (sugestoes) sugestoes.innerHTML = "";
   for (const d of destinos) {
-    const opt = document.createElement("option");
-    opt.value = String(d.id);
-    opt.textContent = `${d.titulo} (${d.tipo})`;
-    select.appendChild(opt);
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "item-destino";
+    item.textContent = `${d.titulo} (${d.tipo})`;
+    item.addEventListener("click", () => {
+      $("destino").value = String(d.id);
+      invalidarVerificacao();
+      fecharListaDestinos();
+    });
+    lista.appendChild(item);
     if (sugestoes) {
       const sug = document.createElement("option");
       sug.value = d.titulo;
@@ -186,8 +205,14 @@ function preencherDestinos(destinos) {
       sugestoes.appendChild(sug);
     }
   }
-  select.hidden = destinos.length === 0;
+  $("caixa-destinos").hidden = destinos.length === 0;
+  if (destinos.length) abrirListaDestinos();
 }
+
+$("btn-destinos-seta").addEventListener("click", () => {
+  if ($("lista-destinos").hidden) abrirListaDestinos();
+  else fecharListaDestinos();
+});
 
 async function atualizarStatus() {
   try {
@@ -274,11 +299,6 @@ $("btn-listar").addEventListener("click", async () => {
     preencherDestinos(await chamar("/api/destinos"));
   } catch (e) { mostrarErro(e.message); }
   botao.disabled = false;
-});
-
-$("lista-destinos").addEventListener("change", () => {
-  $("destino").value = $("lista-destinos").value;
-  invalidarVerificacao();
 });
 
 async function verificarDestino() {

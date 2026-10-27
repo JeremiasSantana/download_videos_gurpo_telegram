@@ -53,7 +53,10 @@
     </label>
     <div class="linha">
       <button id="btn-listar">Listar meus destinos</button>
-      <select id="lista-destinos" hidden></select>
+      <div id="caixa-destinos" class="caixa-destinos" hidden>
+      <button type="button" id="btn-destinos-seta">Meus destinos <span id="seta-destinos">▾</span></button>
+      <div id="lista-destinos" class="lista-destinos" hidden></div>
+    </div>
     </div>
     <button id="btn-preparar">Verificar destino e tópicos</button>
     <p id="info-destino"></p>

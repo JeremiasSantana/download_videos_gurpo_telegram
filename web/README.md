@@ -29,8 +29,11 @@ Pré-requisito: o arquivo `.env` da raiz preenchido com `ID_API` e
 1. **Login no Telegram** — telefone → código recebido no Telegram →
    senha, se a conta tiver verificação em duas etapas.
 2. **Escolher o que baixar** — destino por título/@/link/ID ou pela
-   lista dos seus destinos (ao digitar, aparecem sugestões dos seus
-   grupos/canais/conversas); o botão de verificar mostra o resultado
+   lista dos seus destinos: o botão "Listar meus destinos" abre um
+   painel com todas as conversas de uma vez (sem clicar e segurar);
+   o painel só fecha ao escolher uma conversa ou ao clicar na seta
+   de novo. Ao digitar, aparecem sugestões dos seus
+   grupos/canais/conversas; o botão de verificar mostra o resultado
    logo abaixo do campo, e trocar o texto do destino limpa os
    tópicos do destino anterior; se for grupo com tópicos, escolher
    o tópico; limite de mensagens analisadas; pasta de destino.
