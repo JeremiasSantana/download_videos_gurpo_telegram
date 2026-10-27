@@ -184,17 +184,23 @@ function fecharListaDestinos() {
   $("btn-seta-destinos").textContent = "▾";
 }
 
-function montarListaDestinos(destinos) {
-  // Monta os itens do painel SEM mexer no texto digitado no campo.
+function avisoNaLista(texto) {
   const lista = $("lista-destinos");
   lista.innerHTML = "";
+  const aviso = document.createElement("div");
+  aviso.className = "item-vazio";
+  aviso.textContent = texto;
+  lista.appendChild(aviso);
+}
+
+function montarListaDestinos(destinos) {
+  // Monta os itens do painel SEM mexer no texto digitado no campo.
   if (!destinos.length) {
-    const vazio = document.createElement("div");
-    vazio.className = "item-vazio";
-    vazio.textContent = "Nenhuma conversa encontrada.";
-    lista.appendChild(vazio);
+    avisoNaLista("Nenhuma conversa encontrada.");
     return;
   }
+  const lista = $("lista-destinos");
+  lista.innerHTML = "";
   for (const d of destinos) {
     const item = document.createElement("button");
     item.type = "button";
@@ -227,7 +233,16 @@ function filtrarDestinos(destinos, texto) {
 
 async function mostrarDestinosDaSeta() {
   if (!todosDestinos) {
-    todosDestinos = await chamar("/api/destinos");
+    // Abre o painel na hora com o aviso de carregando: nada de
+    // clicar e "não acontecer nada" enquanto a lista vem.
+    avisoNaLista("Carregando conversas…");
+    abrirListaDestinos();
+    try {
+      todosDestinos = await chamar("/api/destinos");
+    } catch (e) {
+      avisoNaLista("Não consegui carregar as conversas: " + e.message);
+      return;
+    }
   }
   montarListaDestinos(
     filtrarDestinos(todosDestinos, $("destino").value)
@@ -241,9 +256,7 @@ $("btn-seta-destinos").addEventListener("click", async () => {
     fecharListaDestinos();
     return;
   }
-  try {
-    await mostrarDestinosDaSeta();
-  } catch (e) { mostrarErro(e.message); }
+  await mostrarDestinosDaSeta();
 });
 
 async function atualizarStatus() {

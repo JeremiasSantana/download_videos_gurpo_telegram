@@ -230,6 +230,17 @@ def _agendar_carga_conversas():
 app = FastAPI(title="Baixador de Vídeos do Telegram")
 
 
+@app.middleware("http")
+async def _sem_cache_na_pagina(request, call_next):
+    """A página (HTML/CSS/JS) nunca fica presa em versão velha no
+    cache do navegador: a cada abertura, o navegador confere se
+    mudou e baixa a versão nova."""
+    resposta = await call_next(request)
+    if not request.url.path.startswith("/api"):
+        resposta.headers["Cache-Control"] = "no-cache"
+    return resposta
+
+
 @app.get("/api/status")
 async def status():
     resultado = {

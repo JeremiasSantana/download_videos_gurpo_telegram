@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Baixador de Vídeos do Telegram</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
   <canvas id="fundo-rede" aria-hidden="true"></canvas>
@@ -47,12 +47,11 @@
 
   <section id="secao-download">
     <h2>2. Escolher o que baixar</h2>
-    <label>Destino (título, @usuário, link ou ID)
-      <span class="campo-com-seta">
-        <input id="destino" type="text" placeholder="Ex.: Meu grupo" autocomplete="off">
-        <button type="button" id="btn-seta-destinos" title="Mostrar as conversas">▾</button>
-      </span>
-    </label>
+    <label for="destino">Destino (título, @usuário, link ou ID)</label>
+    <div class="campo-com-seta">
+      <input id="destino" type="text" placeholder="Ex.: Meu grupo" autocomplete="off">
+      <button type="button" id="btn-seta-destinos" title="Mostrar as conversas">▾</button>
+    </div>
     <div id="lista-destinos" class="lista-destinos" hidden></div>
     <button id="btn-preparar">Verificar destino e tópicos</button>
     <p id="info-destino"></p>
@@ -86,6 +85,6 @@
   </section>
 
   <p id="mensagem" role="alert"></p>
-  <script src="app.js"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
