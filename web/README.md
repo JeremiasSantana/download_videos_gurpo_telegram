@@ -35,7 +35,11 @@ Pré-requisito: o arquivo `.env` da raiz preenchido com `ID_API` e
    tópicos do destino anterior; se for grupo com tópicos, escolher
    o tópico; limite de mensagens analisadas; pasta de destino.
 3. **Progresso** — log ao vivo do motor e resumo final
-   (analisadas/baixados/pulados/erros).
+   (analisadas/baixados/pulados/erros). Ao lado do botão de baixar
+   há o botão **Cancelar download**, clicável só enquanto um
+   download está rodando: ele para o download (o vídeo interrompido
+   é descartado e o que já foi baixado continua salvo, sem baixar
+   de novo depois).
 4. **Histórico de vídeos baixados** — agrupado por local de origem
    (canal, grupo ou conversa), a partir do registro `.baixados.json`.
    Clicando num local, aparecem os vídeos baixados dele. Para cada

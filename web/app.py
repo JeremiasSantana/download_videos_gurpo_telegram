@@ -64,10 +64,11 @@ _cache_destinos = {}  # str(id) -> Destino já resolvido
 _cache_topicos = {}   # str(id do destino) -> {id_topico: titulo}
 
 _download = {
-    "estado": "parado",  # parado | rodando | concluido | erro
+    "estado": "parado",  # parado | rodando | concluido | erro | cancelado
     "stats": None,
     "erro": None,
 }
+_tarefa_download = None  # asyncio.Task do download em andamento
 
 
 class _CapturaLogs(logging.Handler):
@@ -353,6 +354,12 @@ async def _executar_download(pedido: PedidoBaixar):
             "erros": stats.erros,
         }
         _download["estado"] = "concluido"
+    except asyncio.CancelledError:
+        # Cancelado pelo botão da página: o motor já salvou o
+        # registro e removeu o arquivo parcial do vídeo interrompido;
+        # o que foi baixado antes continua valendo.
+        _download["estado"] = "cancelado"
+        logger.info("Download cancelado pelo usuário.")
     except Exception as erro:  # devolve o erro para a página, sem derrubar
         _download["estado"] = "erro"
         _download["erro"] = getattr(erro, "detail", None) or str(erro)
@@ -361,6 +368,7 @@ async def _executar_download(pedido: PedidoBaixar):
 
 @app.post("/api/baixar")
 async def baixar(pedido: PedidoBaixar):
+    global _tarefa_download
     if _download["estado"] == "rodando":
         raise HTTPException(
             status_code=409, detail="Já há um download em andamento."
@@ -370,8 +378,24 @@ async def baixar(pedido: PedidoBaixar):
             status_code=400, detail="O limite precisa ser maior que zero."
         )
     await _cliente_autorizado()
-    asyncio.create_task(_executar_download(pedido))
+    _tarefa_download = asyncio.create_task(_executar_download(pedido))
     return {"iniciado": True}
+
+
+@app.post("/api/cancelar")
+async def cancelar():
+    """Cancela o download em andamento (botão Cancelar da página)."""
+    if (
+        _download["estado"] != "rodando"
+        or _tarefa_download is None
+        or _tarefa_download.done()
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Não há download em andamento para cancelar.",
+        )
+    _tarefa_download.cancel()
+    return {"cancelando": True}
 
 
 @app.get("/api/progresso")

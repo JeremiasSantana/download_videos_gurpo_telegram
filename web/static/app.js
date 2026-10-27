@@ -197,6 +197,12 @@ async function atualizarStatus() {
       return;
     }
     if (s.pasta_padrao && !$("pasta").value) $("pasta").value = s.pasta_padrao;
+    if (s.download === "rodando") {
+      // Página recarregada no meio de um download: restaura os botões.
+      botoesDownload(true);
+      $("resumo").textContent = "Baixando…";
+      acompanhar();
+    }
     if (s.autorizado) {
       $("status").textContent = "Conectado ao Telegram.";
       $("login-form").hidden = true;
@@ -325,6 +331,12 @@ $("btn-preparar").addEventListener("click", async () => {
 // ---------- Download / progresso ----------
 let acompanhando = null;
 
+function botoesDownload(rodando) {
+  // Baixar fica clicável só sem download em andamento; Cancelar, só com.
+  $("btn-baixar").disabled = rodando;
+  $("btn-cancelar").disabled = !rodando;
+}
+
 function acompanhar() {
   clearInterval(acompanhando);
   acompanhando = setInterval(async () => {
@@ -337,14 +349,19 @@ function acompanhar() {
           `Concluído: ${p.stats.analisadas} mensagens analisadas, ` +
           `${p.stats.baixados} baixados, ${p.stats.pulados} pulados, ` +
           `${p.stats.erros} com erro.`;
+      } else if (p.estado === "cancelado") {
+        $("resumo").textContent =
+          "Download cancelado. O que já foi baixado está salvo " +
+          "e não será baixado de novo.";
       } else if (p.estado === "erro") {
         $("resumo").textContent = "Download terminou com erro: " + (p.erro || "");
       } else if (p.estado === "rodando") {
         $("resumo").textContent = "Baixando…";
+        botoesDownload(true);
       }
       if (p.estado !== "rodando") {
         clearInterval(acompanhando);
-        $("btn-baixar").disabled = false;
+        botoesDownload(false);
         atualizarHistorico();
       }
     } catch { /* tenta de novo no próximo ciclo */ }
@@ -369,9 +386,18 @@ $("btn-baixar").addEventListener("click", async () => {
       limite: limite,
       pasta: $("pasta").value || null,
     }));
-    $("btn-baixar").disabled = true;
+    botoesDownload(true);
     $("resumo").textContent = "Baixando…";
     acompanhar();
+  } catch (e) { mostrarErro(e.message); }
+});
+
+$("btn-cancelar").addEventListener("click", async () => {
+  mostrarErro("");
+  try {
+    await chamar("/api/cancelar", { method: "POST" });
+    $("btn-cancelar").disabled = true;
+    $("resumo").textContent = "Cancelando…";
   } catch (e) { mostrarErro(e.message); }
 });
 
