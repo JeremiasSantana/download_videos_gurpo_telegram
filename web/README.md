@@ -33,8 +33,24 @@ Pré-requisito: o arquivo `.env` da raiz preenchido com `ID_API` e
    tópico; limite de mensagens analisadas; pasta de destino.
 3. **Progresso** — log ao vivo do motor e resumo final
    (analisadas/baixados/pulados/erros).
-4. **Vídeos baixados** — lista dos arquivos da pasta, com link para
-   baixar/abrir pelo navegador.
+4. **Histórico de vídeos baixados** — agrupado por local de origem
+   (canal, grupo ou conversa), a partir do registro `.baixados.json`.
+   Clicando num local, aparecem os vídeos baixados dele. Para cada
+   local dá para **excluir o histórico** (apaga só o registro daquele
+   local; os vídeos continuam na pasta, mas podem ser baixados de
+   novo no futuro) ou **ocultar** (o histórico fica embaçado, a
+   escolha fica salva no navegador).
+
+## Aparência
+
+- Botão **sol/lua** no canto superior direito alterna entre modo
+  escuro (degradê escuro) e modo claro (branco com azul em degradê);
+  a escolha fica salva no navegador.
+- Fundo animado com traços de rede neural se movendo e logos de
+  tecnologia flutuando (Python, Git, GitHub, Telegram, JS, HTML,
+  CSS, FastAPI, Linux, Docker), no espírito do papel de parede do
+  WhatsApp.
+- Botões com bordas bem arredondadas.
 
 ## Pontos de atenção
 

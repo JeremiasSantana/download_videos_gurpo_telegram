@@ -425,6 +425,108 @@ async def baixar_arquivo(
     return FileResponse(alvo, filename=alvo.name)
 
 
+# =========================
+# HISTÓRICO DE VÍDEOS BAIXADOS
+# =========================
+# O histórico vem do registro ``.baixados.json`` da pasta de vídeos
+# (o mesmo que o motor usa para não baixar de novo). Agrupa por local
+# de origem (canal, grupo ou conversa). Excluir o histórico apaga só
+# os registros daquele local — os arquivos continuam na pasta, mas,
+# sem o registro, podem ser baixados de novo no futuro.
+
+
+def _grupos_historico(base: pathlib.Path):
+    registro = arquivos.RegistroDownloads(base / ".baixados.json")
+    grupos = {}
+
+    for chave_registro, entrada in registro.dados.items():
+        if not isinstance(entrada, dict):
+            continue
+
+        caminho_bruto = entrada.get("arquivo")
+        if not caminho_bruto:
+            continue
+
+        caminho = pathlib.Path(caminho_bruto)
+        if not arquivos.arquivo_valido(caminho, entrada.get("tamanho")):
+            continue
+
+        titulo = entrada.get("destino") or "Sem origem definida"
+        id_destino = (
+            chave_registro.split(":", 1)[0]
+            if ":" in chave_registro
+            else ""
+        )
+        chave_grupo = f"{id_destino}|{titulo}"
+
+        grupo = grupos.setdefault(
+            chave_grupo,
+            {
+                "chave": chave_grupo,
+                "destino": titulo,
+                "videos": [],
+                "_chaves": [],
+            },
+        )
+        grupo["_chaves"].append(chave_registro)
+
+        try:
+            relativo = str(caminho.relative_to(base))
+        except ValueError:
+            relativo = None
+
+        grupo["videos"].append(
+            {
+                "nome": caminho.name,
+                "topico": entrada.get("topico"),
+                "tamanho": entrada.get("tamanho")
+                or caminho.stat().st_size,
+                "caminho": relativo,
+            }
+        )
+
+    resultado = []
+    for grupo in grupos.values():
+        grupo["videos"].sort(key=lambda v: v["nome"].casefold())
+        grupo["total"] = len(grupo["videos"])
+        grupo["tamanho_total"] = sum(
+            v["tamanho"] or 0 for v in grupo["videos"]
+        )
+        resultado.append(grupo)
+
+    resultado.sort(key=lambda g: g["destino"].casefold())
+    return resultado
+
+
+@app.get("/api/historico")
+async def historico(pasta: str | None = Query(default=None)):
+    base = _pasta_base_segura(pasta)
+    grupos = [
+        {k: v for k, v in grupo.items() if not k.startswith("_")}
+        for grupo in _grupos_historico(base)
+    ]
+    return {"pasta": str(base), "grupos": grupos}
+
+
+@app.delete("/api/historico")
+async def excluir_historico(
+    chave: str = Query(...), pasta: str | None = Query(default=None)
+):
+    base = _pasta_base_segura(pasta)
+    alvo = next(
+        (g for g in _grupos_historico(base) if g["chave"] == chave), None
+    )
+    if alvo is None:
+        raise HTTPException(
+            status_code=404, detail="Histórico desse local não encontrado."
+        )
+    registro = arquivos.RegistroDownloads(base / ".baixados.json")
+    for chave_registro in alvo["_chaves"]:
+        registro.dados.pop(chave_registro, None)
+    registro.salvar()
+    return {"removidos": len(alvo["_chaves"]), "destino": alvo["destino"]}
+
+
 # Páginas (HTML/CSS/JS) — montado por último para não sombrear a API.
 app.mount(
     "/",

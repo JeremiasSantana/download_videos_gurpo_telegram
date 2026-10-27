@@ -1,55 +1,194 @@
-:root { color-scheme: dark; }
+/* Temas: escuro (degradê escuro) e claro (branco com azul em degradê).
+   A troca é pelo atributo data-tema no <html>, salva no navegador. */
+[data-tema="escuro"] {
+  color-scheme: dark;
+  --grad-1: #0b1220;
+  --grad-2: #132238;
+  --grad-3: #1d1340;
+  --painel: rgba(23, 33, 48, 0.88);
+  --painel-borda: rgba(120, 170, 230, 0.25);
+  --texto: #e8eef4;
+  --texto-fraco: #9db4cc;
+  --destaque: #2aabee;
+  --botao: #33506e;
+  --campo: rgba(10, 18, 30, 0.9);
+  --rede: 90, 180, 250;
+  --erro: #ff8a80;
+}
+[data-tema="claro"] {
+  color-scheme: light;
+  --grad-1: #ffffff;
+  --grad-2: #dbeeff;
+  --grad-3: #a8ccf5;
+  --painel: rgba(255, 255, 255, 0.9);
+  --painel-borda: rgba(40, 110, 200, 0.25);
+  --texto: #16304d;
+  --texto-fraco: #4d6a88;
+  --destaque: #178fd6;
+  --botao: #cfe7fa;
+  --campo: rgba(255, 255, 255, 0.95);
+  --rede: 25, 105, 190;
+  --erro: #c62828;
+}
+
 * { box-sizing: border-box; }
+
 body {
   font-family: system-ui, sans-serif;
-  max-width: 760px;
+  max-width: 780px;
   margin: 0 auto;
   padding: 16px;
-  background: #17212b;
-  color: #e8eef4;
+  min-height: 100vh;
+  color: var(--texto);
+  background: linear-gradient(150deg, var(--grad-1), var(--grad-2) 55%, var(--grad-3));
+  background-attachment: fixed;
+  transition: background 0.4s ease, color 0.4s ease;
 }
-h1 { font-size: 1.4rem; }
+
+/* Fundo animado: rede neural (canvas) + logos de tecnologia flutuando */
+#fundo-rede {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.55;
+}
+#logos-flutuantes {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.logo-flutuante {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 44px;
+  height: 44px;
+  opacity: 0.18;
+  will-change: transform;
+}
+.logo-flutuante img { width: 100%; height: 100%; display: block; }
+.logo-flutuante .sigla {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  background: var(--botao);
+  color: var(--texto);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+header, section, #mensagem { position: relative; z-index: 1; }
+
+header { padding-right: 64px; }
+h1 { font-size: 1.45rem; }
 h2 { font-size: 1.1rem; margin-top: 0; }
-section {
-  background: #242f3d;
-  border-radius: 10px;
-  padding: 16px;
-  margin-bottom: 16px;
+
+/* Botão sol/lua no canto superior direito */
+#btn-tema {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 48px;
+  height: 48px;
+  padding: 11px;
+  border-radius: 50%;
+  background: var(--painel);
+  border: 1px solid var(--painel-borda);
+  color: var(--texto);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
-label { display: block; margin: 10px 0; font-size: .9rem; }
+#btn-tema svg { width: 100%; height: 100%; }
+[data-tema="escuro"] .icone-lua { display: none; }
+[data-tema="claro"] .icone-sol { display: none; }
+
+section {
+  background: var(--painel);
+  border: 1px solid var(--painel-borda);
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(6px);
+}
+
+label { display: block; margin: 10px 0; font-size: 0.9rem; }
 input, select {
   width: 100%;
   margin-top: 4px;
-  padding: 9px;
-  border-radius: 6px;
-  border: 1px solid #3a4a5c;
-  background: #17212b;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--painel-borda);
+  background: var(--campo);
   color: inherit;
 }
+pre, #log { border-radius: 12px; }
+
 button {
-  padding: 9px 14px;
-  border: 0;
-  border-radius: 6px;
-  background: #3a4a5c;
+  padding: 10px 18px;
+  border: 1px solid var(--painel-borda);
+  border-radius: 999px;
+  background: var(--botao);
   color: inherit;
   cursor: pointer;
   margin: 6px 4px 6px 0;
+  font-size: 0.92rem;
+  transition: transform 0.1s ease, filter 0.15s ease;
 }
-button.principal { background: #2aabee; color: #fff; font-weight: 600; }
-button:disabled { opacity: .5; cursor: wait; }
+button:hover { filter: brightness(1.12); }
+button:active { transform: scale(0.97); }
+button.principal { background: var(--destaque); color: #fff; font-weight: 600; border-color: transparent; }
+button.perigo { background: transparent; border-color: var(--erro); color: var(--erro); }
+button:disabled { opacity: 0.5; cursor: wait; }
+
 .linha { display: flex; gap: 8px; align-items: center; }
 .linha select { flex: 1; }
+
 #log {
-  background: #0e1621;
-  border-radius: 6px;
+  background: var(--campo);
   padding: 10px;
   max-height: 260px;
   overflow: auto;
   white-space: pre-wrap;
-  font-size: .8rem;
+  font-size: 0.8rem;
 }
-#mensagem { color: #ff8a80; min-height: 1.2em; }
-#status { color: #8ab4f8; }
-ul { padding-left: 18px; }
-li { margin: 6px 0; }
-a { color: #2aabee; }
+#mensagem { color: var(--erro); min-height: 1.2em; }
+#status { color: var(--destaque); }
+.dica { color: var(--texto-fraco); font-size: 0.9rem; }
+
+/* Histórico por local (canal/grupo/conversa) */
+.grupo {
+  border: 1px solid var(--painel-borda);
+  border-radius: 14px;
+  padding: 10px 14px;
+  margin: 10px 0;
+  background: var(--campo);
+}
+.grupo-cabecalho {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.grupo-titulo {
+  flex: 1;
+  text-align: left;
+  font-weight: 600;
+  background: transparent;
+  border: 0;
+  margin: 0;
+  padding: 8px 4px;
+}
+.grupo-resumo { color: var(--texto-fraco); font-size: 0.85rem; }
+.grupo-videos { margin: 8px 0 4px; padding-left: 18px; }
+.grupo-videos li { margin: 6px 0; }
+.grupo .embacado { filter: blur(8px); user-select: none; pointer-events: none; }
+a { color: var(--destaque); }

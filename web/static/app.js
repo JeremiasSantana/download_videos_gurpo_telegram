@@ -13,7 +13,6 @@ async function chamar(url, opcoes) {
   if (!resposta.ok) {
     let detalhe = dados && dados.detail;
     if (detalhe && typeof detalhe === "object") {
-      // Ambiguidade de destino: oferece os candidatos na lista.
       if (Array.isArray(detalhe.candidatos)) {
         preencherDestinos(detalhe.candidatos);
         throw new Error(detalhe.mensagem + " Escolha um na lista abaixo do botão Listar.");
@@ -31,6 +30,142 @@ const jsonPost = (corpo) => ({
   body: JSON.stringify(corpo),
 });
 
+function formatarTamanho(bytes) {
+  if (!bytes && bytes !== 0) return "";
+  if (bytes >= 1e9) return (bytes / 1e9).toFixed(1) + " GB";
+  if (bytes >= 1e6) return (bytes / 1e6).toFixed(1) + " MB";
+  if (bytes >= 1e3) return (bytes / 1e3).toFixed(0) + " KB";
+  return bytes + " B";
+}
+
+// ---------- Tema claro/escuro (sol/lua) ----------
+function aplicarTema(tema) {
+  document.documentElement.dataset.tema = tema;
+  try { localStorage.setItem("tema", tema); } catch { /* sem storage */ }
+  montarLogos();
+}
+
+$("btn-tema").addEventListener("click", () => {
+  const atual = document.documentElement.dataset.tema === "claro" ? "claro" : "escuro";
+  aplicarTema(atual === "claro" ? "escuro" : "claro");
+});
+
+(function iniciarTema() {
+  let tema = "escuro";
+  try { tema = localStorage.getItem("tema") || "escuro"; } catch { /* padrão */ }
+  document.documentElement.dataset.tema = tema === "claro" ? "claro" : "escuro";
+})();
+
+// ---------- Fundo animado: rede neural + logos flutuando ----------
+const canvas = $("fundo-rede");
+const ctx = canvas.getContext("2d");
+let pontos = [];
+
+function iniciarRede() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const quantidade = Math.min(70, Math.floor(window.innerWidth / 18));
+  pontos = Array.from({ length: quantidade }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    vx: (Math.random() - 0.5) * 0.45,
+    vy: (Math.random() - 0.5) * 0.45,
+  }));
+}
+
+function desenharRede() {
+  const cor = getComputedStyle(document.documentElement)
+    .getPropertyValue("--rede").trim() || "90, 180, 250";
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (const p of pontos) {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${cor}, 0.7)`;
+    ctx.fill();
+  }
+  for (let i = 0; i < pontos.length; i++) {
+    for (let j = i + 1; j < pontos.length; j++) {
+      const dx = pontos[i].x - pontos[j].x;
+      const dy = pontos[i].y - pontos[j].y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 130) {
+        ctx.beginPath();
+        ctx.moveTo(pontos[i].x, pontos[i].y);
+        ctx.lineTo(pontos[j].x, pontos[j].y);
+        ctx.strokeStyle = `rgba(${cor}, ${(1 - dist / 130) * 0.35})`;
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(desenharRede);
+}
+
+const TECNOLOGIAS = [
+  { slug: "python", cor: "3776AB", sigla: "Py" },
+  { slug: "git", cor: "F05032", sigla: "Git" },
+  { slug: "github", cor: null, sigla: "GH" }, // cor depende do tema
+  { slug: "telegram", cor: "26A5E4", sigla: "TG" },
+  { slug: "javascript", cor: "F7DF1E", sigla: "JS" },
+  { slug: "html5", cor: "E34F26", sigla: "HTML" },
+  { slug: "css", cor: "663399", sigla: "CSS" },
+  { slug: "fastapi", cor: "009688", sigla: "API" },
+  { slug: "linux", cor: "FCC624", sigla: "Linux" },
+  { slug: "docker", cor: "2496ED", sigla: "Docker" },
+];
+let flutuantes = [];
+
+function montarLogos() {
+  const caixa = $("logos-flutuantes");
+  caixa.innerHTML = "";
+  flutuantes = [];
+  const escuro = document.documentElement.dataset.tema !== "claro";
+  for (const tec of TECNOLOGIAS) {
+    const cor = tec.cor || (escuro ? "FFFFFF" : "181717");
+    const el = document.createElement("div");
+    el.className = "logo-flutuante";
+    const sigla = document.createElement("span");
+    sigla.className = "sigla";
+    sigla.textContent = tec.sigla;
+    el.appendChild(sigla);
+    const img = document.createElement("img");
+    img.alt = "";
+    img.src = `https://cdn.simpleicons.org/${tec.slug}/${cor}`;
+    img.addEventListener("load", () => { sigla.remove(); });
+    img.addEventListener("error", () => { img.remove(); });
+    el.appendChild(img);
+    caixa.appendChild(el);
+    flutuantes.push({
+      el,
+      x: Math.random() * Math.max(1, window.innerWidth - 50),
+      y: Math.random() * Math.max(1, window.innerHeight - 50),
+      vx: (Math.random() < 0.5 ? -1 : 1) * (0.25 + Math.random() * 0.5),
+      vy: (Math.random() < 0.5 ? -1 : 1) * (0.25 + Math.random() * 0.5),
+    });
+  }
+}
+
+function moverLogos() {
+  for (const f of flutuantes) {
+    f.x += f.vx; f.y += f.vy;
+    if (f.x < 0 || f.x > window.innerWidth - 46) f.vx *= -1;
+    if (f.y < 0 || f.y > window.innerHeight - 46) f.vy *= -1;
+    f.x = Math.min(Math.max(f.x, 0), window.innerWidth - 46);
+    f.y = Math.min(Math.max(f.y, 0), window.innerHeight - 46);
+    f.el.style.transform = `translate(${f.x}px, ${f.y}px)`;
+  }
+  requestAnimationFrame(moverLogos);
+}
+
+window.addEventListener("resize", iniciarRede);
+iniciarRede();
+desenharRede();
+montarLogos();
+moverLogos();
+
+// ---------- Status / login ----------
 function preencherDestinos(destinos) {
   const select = $("lista-destinos");
   select.innerHTML = "";
@@ -44,7 +179,6 @@ function preencherDestinos(destinos) {
   if (destinos.length) $("destino").value = String(destinos[0].id);
 }
 
-// ---------- Status / login ----------
 async function atualizarStatus() {
   try {
     const s = await chamar("/api/status");
@@ -146,7 +280,7 @@ function acompanhar() {
       if (p.estado !== "rodando") {
         clearInterval(acompanhando);
         $("btn-baixar").disabled = false;
-        atualizarArquivos();
+        atualizarHistorico();
       }
     } catch { /* tenta de novo no próximo ciclo */ }
   }, 2000);
@@ -169,37 +303,107 @@ $("btn-baixar").addEventListener("click", async () => {
   } catch (e) { mostrarErro(e.message); }
 });
 
-// ---------- Arquivos ----------
-function formatarTamanho(bytes) {
-  if (bytes >= 1e9) return (bytes / 1e9).toFixed(1) + " GB";
-  if (bytes >= 1e6) return (bytes / 1e6).toFixed(1) + " MB";
-  if (bytes >= 1e3) return (bytes / 1e3).toFixed(0) + " KB";
-  return bytes + " B";
+// ---------- Histórico de vídeos baixados ----------
+function lerOcultos() {
+  try { return new Set(JSON.parse(localStorage.getItem("historico-ocultos") || "[]")); }
+  catch { return new Set(); }
+}
+function salvarOcultos(ocultos) {
+  try { localStorage.setItem("historico-ocultos", JSON.stringify([...ocultos])); } catch { /* sem storage */ }
 }
 
-async function atualizarArquivos() {
+async function atualizarHistorico() {
+  const caixa = $("historico");
   try {
     const pasta = encodeURIComponent($("pasta").value || "");
-    const r = await chamar("/api/arquivos?pasta=" + pasta);
-    const lista = $("arquivos");
-    lista.innerHTML = "";
-    if (!r.arquivos.length) {
-      lista.innerHTML = "<li>Nenhum vídeo nesta pasta ainda.</li>";
+    const r = await chamar("/api/historico?pasta=" + pasta);
+    const ocultos = lerOcultos();
+    caixa.innerHTML = "";
+    if (!r.grupos.length) {
+      caixa.innerHTML = "<p class='dica'>Nenhum vídeo no histórico desta pasta ainda.</p>";
       return;
     }
-    for (const a of r.arquivos) {
-      const li = document.createElement("li");
-      const link = document.createElement("a");
-      link.href = "/api/arquivos/baixar?pasta=" + pasta +
-        "&caminho=" + encodeURIComponent(a.caminho);
-      link.textContent = a.caminho;
-      li.appendChild(link);
-      li.appendChild(document.createTextNode(" (" + formatarTamanho(a.tamanho) + ")"));
-      lista.appendChild(li);
+    for (const grupo of r.grupos) {
+      const oculto = ocultos.has(grupo.chave);
+      const div = document.createElement("div");
+      div.className = "grupo";
+
+      const cab = document.createElement("div");
+      cab.className = "grupo-cabecalho";
+
+      const titulo = document.createElement("button");
+      titulo.type = "button";
+      titulo.className = "grupo-titulo" + (oculto ? " embacado" : "");
+      titulo.textContent = grupo.destino;
+      cab.appendChild(titulo);
+
+      const resumo = document.createElement("span");
+      resumo.className = "grupo-resumo";
+      resumo.textContent = `${grupo.total} vídeo(s) • ${formatarTamanho(grupo.tamanho_total)}`;
+      cab.appendChild(resumo);
+
+      const btnOcultar = document.createElement("button");
+      btnOcultar.type = "button";
+      btnOcultar.textContent = oculto ? "Mostrar" : "Ocultar";
+      btnOcultar.addEventListener("click", () => {
+        const o = lerOcultos();
+        if (o.has(grupo.chave)) o.delete(grupo.chave); else o.add(grupo.chave);
+        salvarOcultos(o);
+        atualizarHistorico();
+      });
+      cab.appendChild(btnOcultar);
+
+      const btnExcluir = document.createElement("button");
+      btnExcluir.type = "button";
+      btnExcluir.className = "perigo";
+      btnExcluir.textContent = "Excluir histórico";
+      btnExcluir.addEventListener("click", async () => {
+        const ok = confirm(
+          `Excluir o histórico de "${grupo.destino}"?\n\n` +
+          "Isso apaga só o registro dos downloads desse local. " +
+          "Os vídeos continuam na pasta, mas sem o registro eles " +
+          "podem ser baixados de novo no futuro."
+        );
+        if (!ok) return;
+        try {
+          await chamar(
+            "/api/historico?chave=" + encodeURIComponent(grupo.chave) +
+            "&pasta=" + pasta,
+            { method: "DELETE" }
+          );
+          const o = lerOcultos();
+          o.delete(grupo.chave);
+          salvarOcultos(o);
+          atualizarHistorico();
+        } catch (e) { mostrarErro(e.message); }
+      });
+      cab.appendChild(btnExcluir);
+      div.appendChild(cab);
+
+      const lista = document.createElement("ul");
+      lista.className = "grupo-videos" + (oculto ? " embacado" : "");
+      lista.hidden = true;
+      for (const v of grupo.videos) {
+        const li = document.createElement("li");
+        if (v.caminho) {
+          const link = document.createElement("a");
+          link.href = "/api/arquivos/baixar?pasta=" + pasta +
+            "&caminho=" + encodeURIComponent(v.caminho);
+          link.textContent = v.topico ? `${v.topico} / ${v.nome}` : v.nome;
+          li.appendChild(link);
+        } else {
+          li.textContent = v.topico ? `${v.topico} / ${v.nome}` : v.nome;
+        }
+        li.appendChild(document.createTextNode(" (" + formatarTamanho(v.tamanho) + ")"));
+        lista.appendChild(li);
+      }
+      titulo.addEventListener("click", () => { lista.hidden = !lista.hidden; });
+      div.appendChild(lista);
+      caixa.appendChild(div);
     }
   } catch (e) { mostrarErro(e.message); }
 }
 
-$("btn-arquivos").addEventListener("click", atualizarArquivos);
+$("btn-historico").addEventListener("click", atualizarHistorico);
 
-atualizarStatus().then(atualizarArquivos);
+atualizarStatus().then(atualizarHistorico);
