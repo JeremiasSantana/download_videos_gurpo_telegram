@@ -82,20 +82,21 @@ function desenharRede() {
     if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
     if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(${cor}, 0.7)`;
+    ctx.arc(p.x, p.y, 2.3, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${cor}, 0.95)`;
     ctx.fill();
   }
+  ctx.lineWidth = 1.3;
   for (let i = 0; i < pontos.length; i++) {
     for (let j = i + 1; j < pontos.length; j++) {
       const dx = pontos[i].x - pontos[j].x;
       const dy = pontos[i].y - pontos[j].y;
       const dist = Math.hypot(dx, dy);
-      if (dist < 130) {
+      if (dist < 145) {
         ctx.beginPath();
         ctx.moveTo(pontos[i].x, pontos[i].y);
         ctx.lineTo(pontos[j].x, pontos[j].y);
-        ctx.strokeStyle = `rgba(${cor}, ${(1 - dist / 130) * 0.35})`;
+        ctx.strokeStyle = `rgba(${cor}, ${(1 - dist / 145) * 0.65})`;
         ctx.stroke();
       }
     }
@@ -150,10 +151,10 @@ function montarLogos() {
 function moverLogos() {
   for (const f of flutuantes) {
     f.x += f.vx; f.y += f.vy;
-    if (f.x < 0 || f.x > window.innerWidth - 46) f.vx *= -1;
-    if (f.y < 0 || f.y > window.innerHeight - 46) f.vy *= -1;
-    f.x = Math.min(Math.max(f.x, 0), window.innerWidth - 46);
-    f.y = Math.min(Math.max(f.y, 0), window.innerHeight - 46);
+    if (f.x < 0 || f.x > window.innerWidth - 52) f.vx *= -1;
+    if (f.y < 0 || f.y > window.innerHeight - 52) f.vy *= -1;
+    f.x = Math.min(Math.max(f.x, 0), window.innerWidth - 52);
+    f.y = Math.min(Math.max(f.y, 0), window.innerHeight - 52);
     f.el.style.transform = `translate(${f.x}px, ${f.y}px)`;
   }
   requestAnimationFrame(moverLogos);

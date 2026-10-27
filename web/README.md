@@ -44,12 +44,12 @@ Pré-requisito: o arquivo `.env` da raiz preenchido com `ID_API` e
 ## Aparência
 
 - Botão **sol/lua** no canto superior direito alterna entre modo
-  escuro (fundo preto em degradê) e modo claro (branco com azul em
-  degradê); a escolha fica salva no navegador.
-- Fundo animado com traços de rede neural se movendo e logos de
-  tecnologia flutuando (Python, Git, GitHub, Telegram, JS, HTML,
-  CSS, FastAPI, Linux, Docker), no espírito do papel de parede do
-  WhatsApp.
+  escuro (fundo preto e roxo em degradê) e modo claro (branco com
+  azul em degradê); a escolha fica salva no navegador.
+- Fundo animado com traços de rede neural bem visíveis se movendo e
+  logos de tecnologia flutuando (Python, Git, GitHub, Telegram, JS,
+  HTML, CSS, FastAPI, Linux, Docker), no espírito do papel de parede
+  do WhatsApp.
 - Botões com bordas bem arredondadas.
 
 ## Pontos de atenção

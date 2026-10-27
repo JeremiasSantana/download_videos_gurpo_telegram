@@ -3,23 +3,23 @@
 [data-tema="escuro"] {
   color-scheme: dark;
   --grad-1: #000000;
-  --grad-2: #17030a;
-  --grad-3: #570a18;
-  --painel: rgba(12, 5, 8, 0.92);
-  --painel-borda: rgba(255, 110, 130, 0.18);
-  --texto: #f5f0f1;
-  --texto-fraco: #b3a3a8;
+  --grad-2: #12041f;
+  --grad-3: #4b1482;
+  --painel: rgba(10, 4, 18, 0.92);
+  --painel-borda: rgba(190, 120, 255, 0.22);
+  --texto: #f4f0f8;
+  --texto-fraco: #aca0b8;
   --destaque: #2aabee;
-  --botao: #20080f;
-  --campo: rgba(5, 0, 2, 0.95);
-  --rede: 120, 190, 250;
+  --botao: #1a0b2a;
+  --campo: rgba(3, 0, 8, 0.95);
+  --rede: 200, 145, 255;
   --erro: #ff8a80;
 }
 [data-tema="claro"] {
   color-scheme: light;
   --grad-1: #ffffff;
-  --grad-2: #dbeeff;
-  --grad-3: #a8ccf5;
+  --grad-2: #cfe8ff;
+  --grad-3: #8ec3f7;
   --painel: rgba(255, 255, 255, 0.9);
   --painel-borda: rgba(40, 110, 200, 0.25);
   --texto: #16304d;
@@ -53,7 +53,7 @@ body {
   height: 100%;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.55;
+  opacity: 0.95;
 }
 #logos-flutuantes {
   position: fixed;
@@ -66,9 +66,9 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  width: 44px;
-  height: 44px;
-  opacity: 0.18;
+  width: 50px;
+  height: 50px;
+  opacity: 0.4;
   will-change: transform;
 }
 .logo-flutuante img { width: 100%; height: 100%; display: block; }
