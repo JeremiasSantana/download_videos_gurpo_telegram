@@ -70,6 +70,10 @@ _download = {
 }
 _tarefa_download = None  # asyncio.Task do download em andamento
 
+# Conversas (destinos) carregadas logo após o login: a lista fica
+# pronta em memória para a seta do campo mostrar tudo na hora.
+_cache_conversas = {"lista": None, "tarefa": None}
+
 
 class _CapturaLogs(logging.Handler):
     """Guarda as últimas mensagens de log do motor para a página."""
@@ -184,6 +188,41 @@ async def _resolver(cliente, entrada):
     return _guardar_destino(destino)
 
 
+async def _percorrer_conversas():
+    """Percorre todo o histórico de conversas do Telegram e guarda
+    a lista de destinos em memória.
+
+    Roda em segundo plano assim que o login é autorizado: quando o
+    usuário clica na seta do campo, a lista já está pronta — sem
+    espera e sem risco de vir vazia por uma busca feita na pressa.
+    """
+    try:
+        cliente = await _cliente_autorizado()
+        lista = await listar_destinos(cliente)
+        _cache_conversas["lista"] = lista
+        for destino in lista:
+            _guardar_destino(destino)
+        logger.info(
+            "Conversas carregadas após o login: %d destinos.",
+            len(lista),
+        )
+    except Exception as erro:  # não derruba o login por causa disso
+        logger.warning("Não consegui carregar as conversas: %s", erro)
+    finally:
+        _cache_conversas["tarefa"] = None
+
+
+def _agendar_carga_conversas():
+    """Dispara a carga das conversas se ainda não foi feita."""
+    if (
+        _cache_conversas["lista"] is None
+        and _cache_conversas["tarefa"] is None
+    ):
+        _cache_conversas["tarefa"] = asyncio.create_task(
+            _percorrer_conversas()
+        )
+
+
 # =========================
 # API
 # =========================
@@ -214,6 +253,7 @@ async def status():
         resultado["conectado"] = True
         if await _cliente.is_user_authorized():
             resultado["autorizado"] = True
+            _agendar_carga_conversas()
             eu = await _cliente.get_me()
             resultado["usuario"] = {
                 "nome": getattr(eu, "first_name", None),
@@ -230,6 +270,7 @@ class PedidoCodigo(BaseModel):
 async def login_codigo(pedido: PedidoCodigo):
     cliente = await _obter_cliente()
     if await cliente.is_user_authorized():
+        _agendar_carga_conversas()
         return {"autorizado": True}
     telefone = pedido.telefone.strip()
     if not telefone:
@@ -255,6 +296,7 @@ class PedidoConfirmar(BaseModel):
 async def login_confirmar(pedido: PedidoConfirmar):
     cliente = await _obter_cliente()
     if await cliente.is_user_authorized():
+        _agendar_carga_conversas()
         return {"autorizado": True}
     if not _login_pendente["telefone"]:
         raise HTTPException(
@@ -282,13 +324,30 @@ async def login_confirmar(pedido: PedidoConfirmar):
         ) from erro
     _login_pendente["telefone"] = None
     _login_pendente["hash"] = None
+    # Login verificado e autorizado: já percorre todas as conversas
+    # e deixa a lista pronta para quando a seta for clicada.
+    _agendar_carga_conversas()
     return {"autorizado": True}
 
 
 @app.get("/api/destinos")
 async def destinos():
+    # Lista pronta do pós-login: responde na hora.
+    if _cache_conversas["lista"] is not None:
+        return [_resumo_destino(d) for d in _cache_conversas["lista"]]
+    # Carga do pós-login ainda rodando: espera ela terminar.
+    tarefa = _cache_conversas["tarefa"]
+    if tarefa is not None:
+        await tarefa
+        if _cache_conversas["lista"] is not None:
+            return [
+                _resumo_destino(d) for d in _cache_conversas["lista"]
+            ]
+    # Sem carga (ex.: login feito antes desta versão): busca agora
+    # e guarda para as próximas vezes.
     cliente = await _cliente_autorizado()
     lista = await listar_destinos(cliente)
+    _cache_conversas["lista"] = lista
     return [_resumo_destino(_guardar_destino(d)) for d in lista]
 
 

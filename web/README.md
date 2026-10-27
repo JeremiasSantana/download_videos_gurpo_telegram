@@ -27,9 +27,12 @@ Pré-requisito: o arquivo `.env` da raiz preenchido com `ID_API` e
 ## Fluxo na página
 
 1. **Login no Telegram** — telefone → código recebido no Telegram →
-   senha, se a conta tiver verificação em duas etapas.
+   senha, se a conta tiver verificação em duas etapas. Assim que o
+   login é autorizado, o backend já percorre todas as conversas do
+   Telegram e deixa a lista de destinos pronta em memória.
 2. **Escolher o que baixar** — destino por título/@/link/ID, ou
-   pela seta ao lado do campo: ela abre um painel com as conversas
+   pela seta dentro do campo, no canto direito (separada por uma
+   linha fina): ela abre um painel com as conversas
    (sem clicar e segurar) — com o campo vazio, todas; com texto
    digitado, só as que combinam com o texto (e digitar com o painel
    aberto já filtra na hora). O painel só fecha ao escolher uma

@@ -193,14 +193,35 @@ button:disabled { opacity: 0.5; cursor: wait; }
 .grupo .embacado { filter: blur(8px); user-select: none; pointer-events: none; }
 a { color: var(--destaque); }
 
-.campo-com-seta { display: flex; gap: 8px; }
-.campo-com-seta input { flex: 1; }
-#btn-seta-destinos { min-width: 48px; font-size: 1.05rem; }
+/* Campo de destino com a seta DENTRO dele, no canto direito,
+   separada por uma linha fina: é a área de clique da lista. */
+.campo-com-seta {
+  display: flex; align-items: stretch;
+  margin-top: 4px;
+  background: var(--campo);
+  border: 1px solid var(--painel-borda);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.campo-com-seta:focus-within { border-color: var(--destaque); }
+.campo-com-seta input {
+  flex: 1; min-width: 0;
+  margin-top: 0; border: none; border-radius: 0;
+  background: transparent;
+}
+.campo-com-seta input:focus { outline: none; }
+#btn-seta-destinos {
+  min-width: 46px; margin: 0; padding: 0 8px;
+  font-size: 1.05rem;
+  background: transparent; color: inherit;
+  border: none; border-left: 1px solid var(--painel-borda);
+  border-radius: 0; cursor: pointer;
+}
 .item-vazio { padding: 9px 10px; color: var(--texto-fraco); }
 
 .lista-destinos {
   margin-top: 6px; max-height: 260px; overflow-y: auto;
-  background: var(--painel); border: 1px solid var(--borda);
+  background: var(--painel); border: 1px solid var(--painel-borda);
   border-radius: 12px; padding: 6px;
 }
 
