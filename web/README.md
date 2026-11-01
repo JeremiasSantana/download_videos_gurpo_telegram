@@ -58,8 +58,8 @@ Pré-requisito: o arquivo `.env` da raiz preenchido com `ID_API` e
 ## Aparência
 
 - Botão **sol/lua** no canto superior direito alterna entre modo
-  escuro (fundo preto e roxo em degradê) e modo claro (branco com
-  azul em degradê); a escolha fica salva no navegador.
+  escuro (fundo limão com degradê para o preto) e modo claro
+  (branco com azul em degradê); a escolha fica salva no navegador.
 - Fundo animado com traços de rede neural bem visíveis se movendo e
   logos de tecnologia flutuando (Python, Git, GitHub, Telegram, JS,
   HTML, CSS, FastAPI, Linux, Docker), no espírito do papel de parede

@@ -3,16 +3,16 @@
 [data-tema="escuro"] {
   color-scheme: dark;
   --grad-1: #000000;
-  --grad-2: #12041f;
-  --grad-3: #4b1482;
-  --painel: rgba(10, 4, 18, 0.92);
-  --painel-borda: rgba(190, 120, 255, 0.22);
-  --texto: #f4f0f8;
-  --texto-fraco: #aca0b8;
+  --grad-2: #131a00;
+  --grad-3: #6e9600;
+  --painel: rgba(8, 10, 2, 0.92);
+  --painel-borda: rgba(205, 235, 100, 0.25);
+  --texto: #f6f8ee;
+  --texto-fraco: #a9ae9b;
   --destaque: #2aabee;
-  --botao: #1a0b2a;
-  --campo: rgba(3, 0, 8, 0.95);
-  --rede: 200, 145, 255;
+  --botao: #1a2103;
+  --campo: rgba(4, 6, 0, 0.95);
+  --rede: 198, 232, 92;
   --erro: #ff8a80;
 }
 [data-tema="claro"] {
