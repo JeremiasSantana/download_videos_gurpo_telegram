@@ -2,9 +2,9 @@
    A troca é pelo atributo data-tema no <html>, salva no navegador. */
 [data-tema="escuro"] {
   color-scheme: dark;
-  --grad-1: #000000;
-  --grad-2: #131a00;
-  --grad-3: #6e9600;
+  --grad-1: #86ad00;
+  --grad-2: #3d4d00;
+  --grad-3: #000000;
   --painel: rgba(8, 10, 2, 0.92);
   --painel-borda: rgba(205, 235, 100, 0.25);
   --texto: #f6f8ee;
