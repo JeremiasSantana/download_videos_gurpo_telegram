@@ -68,7 +68,7 @@ body {
   left: 0;
   width: 50px;
   height: 50px;
-  opacity: 0.4;
+  opacity: 0.45;
   will-change: transform;
 }
 .logo-flutuante img { width: 100%; height: 100%; display: block; }
