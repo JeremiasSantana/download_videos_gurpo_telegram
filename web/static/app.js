@@ -566,3 +566,34 @@ async function atualizarHistorico() {
 $("btn-historico").addEventListener("click", atualizarHistorico);
 
 atualizarStatus().then(atualizarHistorico);
+
+// ---------- Assinatura: efeito máquina de escrever ----------
+(function maquinaDeEscrever() {
+  const alvo = $("by-autor");
+  if (!alvo) return;
+  const texto = "@the_jota_0";
+  let pos = 0;
+  let apagando = false;
+  function passo() {
+    if (!apagando) {
+      pos++;
+      alvo.textContent = texto.slice(0, pos);
+      if (pos === texto.length) {
+        apagando = true;
+        setTimeout(passo, 2300); // pausa com o nome completo
+        return;
+      }
+      setTimeout(passo, 120);
+      return;
+    }
+    pos--;
+    alvo.textContent = texto.slice(0, pos);
+    if (pos === 0) {
+      apagando = false;
+      setTimeout(passo, 600); // pausa antes de escrever de novo
+      return;
+    }
+    setTimeout(passo, 50);
+  }
+  passo();
+})();

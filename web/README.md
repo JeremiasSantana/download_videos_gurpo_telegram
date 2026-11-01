@@ -57,6 +57,12 @@ Pré-requisito: o arquivo `.env` da raiz preenchido com `ID_API` e
 
 ## Aparência
 
+- As seções ficam numa **grade de duas colunas** (lado a lado, duas
+  por linha; em tela estreita vira uma coluna só).
+- Abaixo do título, a assinatura **"By: @the_jota_0"** em fonte
+  maior, com o @ digitado em efeito máquina de escrever (digita,
+  pausa, apaga e repete, com cursor piscando).
+
 - Botão **sol/lua** no canto superior direito alterna entre modo
   escuro (fundo limão com degradê para o preto) e modo claro
   (branco com azul em degradê); a escolha fica salva no navegador.

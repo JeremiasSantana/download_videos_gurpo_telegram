@@ -35,7 +35,7 @@
 
 body {
   font-family: system-ui, sans-serif;
-  max-width: 780px;
+  max-width: 1180px;
   margin: 0 auto;
   padding: 16px;
   min-height: 100vh;
@@ -85,7 +85,7 @@ body {
   font-size: 0.8rem;
 }
 
-header, section, #mensagem { position: relative; z-index: 1; }
+header, main, section, #mensagem { position: relative; z-index: 1; }
 
 header { padding-right: 64px; }
 h1 { font-size: 1.45rem; }
@@ -235,3 +235,34 @@ a { color: var(--destaque); }
 }
 
 .item-destino:hover { background: rgba(128, 128, 128, .18); }
+
+/* Grade: seções lado a lado, duas por linha */
+.grade {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.grade section { margin-bottom: 0; }
+@media (max-width: 860px) {
+  .grade { grid-template-columns: 1fr; }
+}
+
+/* Assinatura "By:" abaixo do título, em fonte maior */
+.byline {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 2px 0 6px;
+  min-height: 1.4em;
+}
+.by-rotulo { color: #000; font-weight: 800; }
+.by-cursor {
+  display: inline-block;
+  width: 3px;
+  height: 0.95em;
+  margin-left: 3px;
+  background: var(--texto);
+  vertical-align: -0.08em;
+  animation: by-piscar 0.8s steps(1) infinite;
+}
+@keyframes by-piscar { 50% { opacity: 0; } }

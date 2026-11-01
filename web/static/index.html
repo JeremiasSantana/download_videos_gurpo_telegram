@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Baixador de Vídeos do Telegram</title>
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
   <canvas id="fundo-rede" aria-hidden="true"></canvas>
@@ -12,6 +12,7 @@
 
   <header>
     <h1>Baixador de Vídeos do Telegram</h1>
+    <p class="byline"><span class="by-rotulo">By:</span> <span id="by-autor"></span><span class="by-cursor" aria-hidden="true"></span></p>
     <p id="status">Carregando status…</p>
     <button id="btn-tema" type="button" title="Alternar modo claro/escuro" aria-label="Alternar modo claro/escuro">
       <svg class="icone-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -24,6 +25,7 @@
     </button>
   </header>
 
+  <main class="grade">
   <section id="secao-login">
     <h2>1. Login no Telegram</h2>
     <div id="login-form">
@@ -83,8 +85,9 @@
     <button id="btn-historico">Atualizar histórico</button>
     <div id="historico"></div>
   </section>
+  </main>
 
   <p id="mensagem" role="alert"></p>
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>
